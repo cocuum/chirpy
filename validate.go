@@ -19,7 +19,7 @@ func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 	params := requestBody{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "could not unmarshall parameters", err)
+		respondWithError(w, http.StatusInternalServerError, "could not decode parameters", err)
 		return
 	}
 
