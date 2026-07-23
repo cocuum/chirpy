@@ -2,39 +2,53 @@ package main
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
+	"strings"
 )
 
 func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	type requestBody struct {
 		Body string `json:"body"`
 	}
 
 	type responseBody struct {
-		Valid bool `json:"valid"`
+		CleanedBody string `json:"cleaned_body"`
 	} 
 
-	dat, err := io.ReadAll(r.Body)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "could not read request", err)
-	}
-
+	decoder := json.NewDecoder(r.Body)
 	params := requestBody{}
-	err = json.Unmarshal(dat, &params)
+	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "could not unmarshall parameters", err)
+		return
 	}
 
 	const maxChirpLength = 140
-
 	if len(params.Body) > maxChirpLength {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, responseBody{Valid: true})
+	badWords := map[string]struct{}{
+		"kerfuffle": {},
+		"sharbert":  {},
+		"fornax":    {},
+	}
+
+	clean_body := cleanBody(params.Body, badWords)
+
+	respondWithJSON(w, http.StatusOK, responseBody{CleanedBody: clean_body})
 		
+}
+
+func cleanBody(body string, badWords map[string]struct{}) string {
+	words := strings.Split(body, " ")
+	for i,word := range words{
+		loweredWord := strings.ToLower(word)
+		if _,ok := badWords[loweredWord]; ok {
+			words[i] = "****"
+		}
+	}
+	cleaned := strings.Join(words, " ")
+	return cleaned
 }
