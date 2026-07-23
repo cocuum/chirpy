@@ -63,14 +63,14 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 }
 
 func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
-	chirps, err := cfg.db.GetAllChirps(r.Context())
+	dbChirps, err := cfg.db.GetAllChirps(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "could not get chirps", err)
 		return
 	}
 	
 	var allChirps = []Chirp{}
-	for _, chirp := range chirps {
+	for _, chirp := range dbChirps {
 		
 		allChirps = append(allChirps, Chirp{
 			ID: chirp.ID,
@@ -82,6 +82,34 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 	}
 
 	respondWithJSON(w, http.StatusOK, allChirps)
+}
+
+func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, r *http.Request) {
+	type responseBody struct {
+		Chirp
+	} 
+
+	dbID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "could not parse ID", err)
+		return
+	}
+
+	dbChirp , err := cfg.db.GetChirpByID(r.Context(), dbID)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Chirp not found", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, responseBody{
+		Chirp: Chirp{
+			ID:			dbChirp.ID,
+			CreatedAt:	dbChirp.CreatedAt,
+			UpdatedAt:	dbChirp.UpdatedAt,
+			Body:		dbChirp.Body,
+			UserID:		dbChirp.UserID,
+		},
+	})
 }
 
 func validateChirp(body string) (string,error) {
