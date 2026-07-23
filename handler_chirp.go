@@ -53,13 +53,35 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 
 	respondWithJSON(w, http.StatusCreated, responseBody{
 		Chirp: Chirp{
+			ID:			chirp.ID,
+			CreatedAt:	chirp.CreatedAt,
+			UpdatedAt:	chirp.UpdatedAt,
+			Body:		chirp.Body,
+			UserID:		chirp.UserID,
+		},
+	})
+}
+
+func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
+	chirps, err := cfg.db.GetAllChirps(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "could not get chirps", err)
+		return
+	}
+	
+	var allChirps = []Chirp{}
+	for _, chirp := range chirps {
+		
+		allChirps = append(allChirps, Chirp{
 			ID: chirp.ID,
 			CreatedAt: chirp.CreatedAt,
 			UpdatedAt: chirp.UpdatedAt,
 			Body: chirp.Body,
 			UserID: chirp.UserID,
-		},
-	})
+		})
+	}
+
+	respondWithJSON(w, http.StatusOK, allChirps)
 }
 
 func validateChirp(body string) (string,error) {
