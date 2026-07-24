@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cocuum/chirpy/internal/auth"
 	"github.com/google/uuid"
 )
 
@@ -17,6 +18,7 @@ type User struct {
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 	type requestBody struct {
+		Password string `json:"password"`
 		Email string `json:"email"`
 	}
 
@@ -32,12 +34,25 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	
 	user, err := cfg.db.CreateUser(r.Context(), params.Email)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "could not create user", err)
 		return
 	}
+	
+	hp, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "could not hash this pword, man!", err)
+		return
+	}
 
+	err = cfg.db.SetHash(r.Context(),hp)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "could not set that hash, brother!", err)
+		return
+	}
+	
 	respondWithJSON(w, http.StatusCreated, responseBody{
 		User: User{
 			ID: user.ID,

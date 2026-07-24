@@ -7,3 +7,12 @@ VALUES (
     $1
 )
 RETURNING *;
+--
+
+-- name: SetHash :exec
+UPDATE users SET hashed_password = $1;
+--
+
+-- name: GetUserByEmail :one
+SELECT * FROM users
+WHERE email = $1;
