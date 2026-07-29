@@ -3,11 +3,13 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/alexedwards/argon2id"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type TokenType string
@@ -73,4 +75,16 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil,fmt.Errorf("invalid user ID: %w", err)
 	}
 	return userID, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	bearer := headers.Get("Authorization")
+	if bearer == "" {
+		return "", errors.New("no auth header included in request")
+	}
+	token, found := strings.CutPrefix(bearer, "Bearer ")
+	if !found {
+		return "", errors.New("no 'Bearer ' prefix found")
+	}
+	return token, nil
 }
