@@ -20,11 +20,13 @@ func (cfg *apiConfig) handlerWebhooks(w http.ResponseWriter, r *http.Request) {
 
 	key, err := auth.GetAPIKey(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "no header header included in request", err)
+		respondWithError(w, http.StatusUnauthorized, "no header included in request", err)
+		return
 	}
 
 	if key != cfg.polka {
 		respondWithError(w, http.StatusUnauthorized, "Invalid ApiKey", err)
+		return
 	}
 
 	decoder := json.NewDecoder(r.Body)
