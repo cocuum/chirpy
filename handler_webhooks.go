@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/cocuum/chirpy/internal/auth"
 	"github.com/google/uuid"
 )
 
@@ -17,9 +18,18 @@ func (cfg *apiConfig) handlerWebhooks(w http.ResponseWriter, r *http.Request) {
 		} `json:"data"`
 	}
 
+	key, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "no header header included in request", err)
+	}
+
+	if key != cfg.polka {
+		respondWithError(w, http.StatusUnauthorized, "Invalid ApiKey", err)
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	params := requestBody{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "could not decode parameters", err)
 		return
