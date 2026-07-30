@@ -54,6 +54,7 @@ func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) 
 	)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "could not update user", err)
+		return
 	}
 
 	respondWithJSON(w, http.StatusOK, responseBody{
