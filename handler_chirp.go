@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cocuum/chirpy/internal/auth"
 	"github.com/cocuum/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -22,7 +23,18 @@ type Chirp struct {
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 	type requestBody struct {
 		Body	string `json:"body"`
-		UserID	uuid.UUID `json:"user_id"`
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "could not find jwt", err)
+		return
+	}
+
+	userID , err := auth.ValidateJWT(token,cfg.jwtsecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "could not validate jwt", err)
+		return
 	}
 
 	type responseBody struct {
@@ -31,7 +43,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 
 	decoder := json.NewDecoder(r.Body)
 	params := requestBody{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "could not decode parameters", err)
 		return
@@ -40,11 +52,12 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 	clean_body, err := validateChirp(params.Body)
 	if clean_body == "" {
 		respondWithError(w, http.StatusBadRequest, err.Error(), err)
+		return
 	}
 
 	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body: clean_body,
-		UserID: params.UserID,
+		UserID: userID,
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "could not create chirp", err)
