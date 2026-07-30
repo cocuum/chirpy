@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cocuum/chirpy/internal/auth"
+	"github.com/cocuum/chirpy/internal/database"
 )
 
 
@@ -14,7 +15,6 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type requestBody struct {
 		Password string `json:"password"`
 		Email string `json:"email"`
-		ExpiresInSeconds int `json:"expires_in_seconds"`
 	}
 
 	type responseBody struct {
@@ -43,20 +43,26 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expirationTime := time.Hour
-	if params.ExpiresInSeconds > 0 && params.ExpiresInSeconds < 3600 {
-		expirationTime = time.Duration(params.ExpiresInSeconds) * time.Second
-	}
-
 	token, err := auth.MakeJWT(
 		user.ID,
 		cfg.jwtsecret,
-		expirationTime,
+		time.Hour,
 	)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "could not make jwt", err)
+		respondWithError(w, http.StatusInternalServerError, "could not make access token", err)
 		return
 	}
+
+	refreshToken := auth.MakeRefreshToken()
+	_, err = cfg.db.CreateRefreshTokens(r.Context(), database.CreateRefreshTokensParams{
+		UserID: user.ID,
+		Token: refreshToken,
+		ExpiresAt: time.Now().Add(24*60*time.Hour),
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "could not create refresh token", err)
+	}
+
 
 	respondWithJSON(w, http.StatusOK, responseBody{
 		User: User{
@@ -66,5 +72,6 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 			Email:			user.Email,
 		},
 		Token: token,
+		RefreshToken: refreshToken,
 	})
 }
