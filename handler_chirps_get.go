@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"net/http"
+	"sort"
 
 	"github.com/cocuum/chirpy/internal/database"
 	"github.com/google/uuid"
@@ -47,6 +49,20 @@ func authorID(r *http.Request) (uuid.UUID, error) {
 	return authorID, nil
 }
 
+func sortChirps(r *http.Request) (string, error) {
+	s := r.URL.Query().Get("sort")
+	switch s {
+	case "" :
+		return "asc",nil
+	case "asc":
+		return "asc", nil
+	case "desc":
+		return "desc", nil
+	default:
+		return "", errors.New("Invalid Sort")
+	}
+}
+
 func prepareResponsePayload(db []database.Chirp) []Chirp {
 	var allChirps = []Chirp{}
 	for _, chirp := range db {
@@ -78,7 +94,19 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 		respondWithError(w, http.StatusInternalServerError, "could not retrieve chirps", err)
 	}
 
+	sortDirection, err := sortChirps(r)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid sort value", err)
+	}
+
 	chirps := prepareResponsePayload(dbChirps)
+
+	sort.Slice(chirps, func(i, j int) bool {
+		if sortDirection == "desc" {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		}
+		return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+	})
 
 	respondWithJSON(w, http.StatusOK, chirps)
 }
